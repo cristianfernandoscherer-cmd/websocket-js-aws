@@ -1,0 +1,92 @@
+service: websockets-chat
+
+frameworkVersion: "4"
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: us-east-1
+  stage: dev
+
+  websocketsApiRouteSelectionExpression: $request.body.action
+
+  environment:
+    JWT_SECRET: ${ssm:/websockets-chat/${self:provider.stage}/jwt-secret}
+    TABLE_NAME: ${ssm:/websockets-chat/${self:provider.stage}/table-name}
+
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:PutItem
+            - dynamodb:GetItem
+            - dynamodb:DeleteItem
+            - dynamodb:Scan
+          Resource:
+            - Fn::GetAtt: [ChatTable, Arn]
+
+        - Effect: Allow
+          Action:
+            - execute-api:ManageConnections
+          Resource:
+            - arn:aws:execute-api:*:*:**/@connections/*
+        - Effect: Allow
+          Action:
+            - ssm:GetParameter
+          Resource: arn:aws:ssm:*:*:parameter/websockets-chat/*
+
+functions:
+  websocketAuthorizer:
+    handler: src/presentation/cmd/authorizer-handler.handler
+
+  connectionHandler:
+    handler: src/presentation/cmd/connection-handler.handler
+    events:
+      - websocket:
+          route: $connect
+          authorizer:
+            name: websocketAuthorizer
+            identitySource:
+              - route.request.header.Authorization
+      - websocket:
+          route: $disconnect
+
+  defaultHandler:
+    handler: src/presentation/cmd/default-handler.handler
+    events:
+      - websocket:
+          route: $default
+
+  sendMessageHandler:
+    handler: src/presentation/cmd/send-broadcast-message-handler.handler
+    events:
+      - websocket:
+          route: sendMessage
+
+  sendEspecificMessageHandler:
+    handler: src/presentation/cmd/send-message-handler.handler
+    events:
+      - websocket:
+          route: sendEspecificMessage
+
+custom:
+  tableName:
+    dev: WEBSOCKET_CHAT_DEV
+    prod: WEBSOCKET_CHAT_PROD
+
+  resolvedTableName: ${self:custom.tableName.${self:provider.stage}}
+
+resources:
+  Resources:
+    ChatTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.resolvedTableName}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: connectionId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: connectionId
+            KeyType: HASH
