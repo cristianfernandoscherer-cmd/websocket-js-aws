@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "prepare": "husky"
   },
   "author": "",
   "license": "ISC",
@@ -14,7 +16,18 @@
     "serverless-websockets-plugin": "^1.0.0"
   },
   "devDependencies": {
+    "husky": "^9.1.7",
     "jest": "^30.2.0",
     "wscat": "^6.1.0"
+  },
+  "jest": {
+    "coverageThreshold": {
+      "global": {
+        "branches": 69,
+        "functions": 80,
+        "lines": 90,
+        "statements": 90
+      }
+    }
   }
 }

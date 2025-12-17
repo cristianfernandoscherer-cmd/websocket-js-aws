@@ -1,95 +1,98 @@
-# Serverless WebSocket Chat
+# WebSocket Chat - Serverless & Node.js
 
-This project is a real-time chat application built using the [Serverless Framework](https://www.serverless.com/), running on AWS Lambda, API Gateway (WebSockets), and DynamoDB.
+Real-time chat application built with **Clean Architecture** principles, running on **AWS Lambda**, **API Gateway (WebSockets)**, and **DynamoDB**.
 
-## Features
+## 📋 Project Summary
+This project acts as a scalable backend for a real-time chat service. It manages WebSocket connections, broadcasts messages, and handles user authorization via JWT. The infrastructure is fully serverless, ensuring low cost and high scalability.
 
--   **Connect/Disconnect**: Automatically manages connection IDs in DynamoDB.
--   **Broadcast Messages**: Sends messages to all connected clients.
--   **Serverless**: Fully serverless architecture (pay-per-use).
+Key Features:
+- **Real-time Messaging:** WebSockets for instant bidirectional communication.
+- **Broadcasting:** Messages sent by one user are broadcast to all connected clients.
+- **Security:** JWT-based authorization for connection establishment and actions.
+- **Scalability:** Built on AWS serverless primitives (Lambda, DynamoDB).
 
-## Architecture
+## 🏗 Architecture
+The project follows **Clean Architecture** to ensure separation of concerns and testability.
 
--   **AWS Lambda**: Node.js functions for handling WebSocket events (`$connect`, `$disconnect`, `$default`, `sendMessage`).
--   **AWS API Gateway**: WebSocket API entry point.
--   **AWS DynamoDB**: Stores active connection IDs (`chatIdTable`).
+### Layers
+1.  **Domain**: Core business logic and entities. Independent of external frameworks.
+    -   *Use Cases*: `Connect`, `Authorize`, `SendMessage`, `Broadcast`.
+    -   *Interfaces*: `ConnectionRepository`, `MessageGateway`.
+2.  **Infrastructure**: Implementation of interfaces and external adapters.
+    -   *DB*: DynamoDB implementation of `ConnectionRepository`.
+    -   *Gateways*: API Gateway management for sending messages.
+3.  **Presentation**: Entry points (driving adapters).
+    -   *Handlers*: Lambda functions (`connection-handler`, `send-message-handler`, etc.) that parse events and call Use Cases.
+4.  **Shared**: Common utilities (Logger, etc.).
 
-## Prerequisites
+### Stack
+-   **Runtime**: Node.js 20.x
+-   **Framework**: Serverless Framework v4
+-   **Cloud Provider**: AWS
+    -   *Compute*: Lambda
+    -   *API*: API Gateway (WebSocket API)
+    -   *Database*: DynamoDB
+-   **Testing**: Jest (Unit Tests & Coverage)
 
--   Node.js (v20.x or later)
--   Serverless Framework v4 (`npm install -g serverless`)
--   AWS CLI configured with appropriate permissions.
+## 🧪 Test Coverage
+The project maintains high standards for code quality through comprehensive unit tests.
 
-## Installation
+**Current Coverage Thresholds:**
+| Metric     | Threshold |
+|------------|-----------|
+| Statements | **90%**   |
+| Lines      | **90%**   |
+| Functions  | **80%**   |
+| Branches   | **69%**   |
 
-1.  Clone the repository:
-    ```bash
-    git clone <repository-url>
-    cd websockets-chat
-    ```
+To run tests and check coverage:
+```bash
+npm run test:coverage
+```
 
-2.  Install dependencies:
+## 🚀 Push Policy (Git Hooks)
+To ensure stability, this repository enforces quality checks before any code is pushed.
+
+**Criteria for successful push:**
+1.  **Tests Must Pass**: All unit tests must execute without errors.
+2.  **Coverage Met**: The code coverage must meet or exceed the thresholds defined above.
+
+**Mechanism:**
+-   **Husky** manages the git hooks.
+-   A `.husky/pre-push` hook triggers `npm run test:coverage`.
+-   If tests fail or coverage drops, the push is **rejected**.
+
+---
+
+## 🛠 Installation & Usage
+
+### Prerequisites
+- Node.js v20+
+- Serverless Framework (`npm i -g serverless`)
+- AWS CLI configured
+
+### Setup
+1.  Install dependencies:
     ```bash
     npm install
     ```
+2.  Deploy:
+    ```bash
+    serverless deploy
+    ```
+3.  Connect via WebSocket Client (e.g., `wscat`):
+    ```bash
+    wscat -c wss://your-api-url.com/dev -H "Authorization: <JWT_TOKEN>"
+    ```
 
-## Deployment
-
-Deploy the stack to AWS:
-
+### Generate Test Token
 ```bash
-serverless deploy
-```
-
-After deployment, you will receive a WebSocket Endpoint URL (e.g., `wss://xxxxxx.execute-api.us-east-1.amazonaws.com/dev`).
-
-## Usage
-
-You can use `wscat` (included in dev dependencies) or any WebSocket client to test the application.
-
-### 1. Connect
-
-```bash
-wscat -c wss://<your-api-id>.execute-api.us-east-1.amazonaws.com/dev
-```
-
-### 2. Send a Message
-
-To send a message to all connected clients, send a JSON payload with the action `sendMessage` and a `data` property containing your message.
-
-```json
-{
-  "action": "sendMessage",
-  "data": "Hello, World!"
-}
-```
-
-The message "Hello, World!" will be broadcasted to all other connected clients.
-
-## Project Structure
-
--   `serverless.yml`: Infrastructure as Code configuration.
--   `handler.js`: Lambda function logic.
-    -   `connectionHandler`: Handles `$connect` and `$disconnect`.
-    -   `sendMessageHandler`: Handles `sendMessage` route (broadcasts to all).
-    -   `defaultHandler`: Handles unknown routes.
-
-
-## Reference project
-- youtube.com.br/watch?v=Quk_XHMvFJI
-
-
-## Generate code
-
 node -e "
 const jwt = require('jsonwebtoken');
 console.log(jwt.sign(
-  {
-    sub: '1234567890',
-    name: 'Cristian Scherer',
-    roles: ['admin']
-  },
-  'test-websocket-chat-nodejs-secret-key-20251216201822',
+  { sub: '123', name: 'Dev User', roles: ['admin'] },
+  'SECRET,
   { algorithm: 'HS256' }
 ));
 "
+```
